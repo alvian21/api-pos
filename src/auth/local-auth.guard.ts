@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  HttpException,
   HttpStatus,
   Injectable,
   UnauthorizedException,
@@ -18,30 +19,35 @@ export class LocalAuthGuard extends AuthGuard('local') {
   }
 
   handleRequest(err, user, info, context) {
-    const response = context.switchToHttp().getResponse();
     if (!user) {
-      const email = context.getRequest().body.email;
-      const password = context.getRequest().body.password;
+      const req = context.switchToHttp().getRequest();
+      const email = req.body.email;
+      const password = req.body.password;
       const errorMessage: string[] = [];
+  
       const emailRegex =
         /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/gi;
-
-      !email && errorMessage.push('email should not be empty');
-      !emailRegex.test(email) && errorMessage.push('email must be an email');
-      !password && errorMessage.push('password should not be empty');
-
+  
+      if (!email) errorMessage.push('email should not be empty');
+      if (email && !emailRegex.test(email)) errorMessage.push('email must be an email');
+      if (!password) errorMessage.push('password should not be empty');
+  
       if (errorMessage.length) {
-        return this.baseService.sendError(response, 'error', errorMessage, HttpStatus.BAD_REQUEST);
+        throw new HttpException(
+          { status: HttpStatus.BAD_REQUEST, message: 'error', errors: errorMessage },
+          HttpStatus.BAD_REQUEST,
+        );
       }
-
-      return this.baseService.sendError(response, 'incorrect email or password', [], HttpStatus.UNAUTHORIZED);
-
+  
+      throw new UnauthorizedException('incorrect email or password');
     }
-
+  
     if (!user.isActive) {
-      return this.baseService.sendError(response, 'account is inactive, please check email for activation', [], HttpStatus.UNAUTHORIZED);
+      throw new UnauthorizedException('account is inactive, please check email for activation');
     }
-
+  
+    // ⚡ Jangan pakai res.json di sini!
     return user;
   }
+  
 }

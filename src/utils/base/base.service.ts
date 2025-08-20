@@ -16,6 +16,18 @@ export class BaseService {
         return res.status(HttpStatus.OK).json(response);
     }
 
+    sendResponseWithoutRes(data: any, message: string, status: number = HttpStatus.OK) {
+
+        const response = {
+            success: true,
+            data: data,
+            message: message,
+            statusCode: HttpStatus.OK
+        };
+
+        return response;
+      }
+
     /**
      * Return error response object
      */
@@ -30,5 +42,19 @@ export class BaseService {
         }
 
         return res.status(code).json(response);
+    }
+
+
+    sendErrorWithoutRes( error: string, errorMessages: string[] = [], code = HttpStatus.NOT_FOUND) {
+        const response: any = {
+            success: false,
+            message: error,
+            statusCode: code,
+        };
+        if (errorMessages.length > 0) {
+            response.data = errorMessages;
+        }
+
+        return response;
     }
 }
