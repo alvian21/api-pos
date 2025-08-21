@@ -10,12 +10,15 @@ import { UpdateRoleDto } from './dto/update-role.dto';
 import { Role } from './entities/role.entity';
 import { BaseService } from 'src/utils/base/base.service';
 import { Response } from 'express';
+import { RolePermission } from 'src/role-permissions/entities/role-permission.entity';
 
 @Injectable()
 export class RolesService extends BaseService {
   constructor(
     @InjectRepository(Role)
-    private roleRepository: Repository<Role>
+    private roleRepository: Repository<Role>,
+    @InjectRepository(RolePermission)
+    private rolePermissionRepository: Repository<RolePermission>
   ) {
     super();
   }
@@ -94,7 +97,7 @@ export class RolesService extends BaseService {
 
     const checkRole = await this.roleRepository.findOne({
       where: {
-        alias: ILike(role.alias), 
+        alias: ILike(role.alias),
         id: Not(id)
       }
     });
@@ -124,10 +127,20 @@ export class RolesService extends BaseService {
       return this.sendError(res, 'Role Not Found', [], HttpStatus.NOT_FOUND);
     }
 
-    const deleted = await this.roleRepository.delete(id);
-    if (deleted.affected === 0) {
-      throw new NotFoundException();
+    const checkPermission = await this.rolePermissionRepository.count({
+      where: {
+        role: {
+          id: id
+        }
+      }
+    });
+
+    if (checkPermission > 0) {
+      return this.sendError(res, 'Cant delete role', [], HttpStatus.BAD_REQUEST);
     }
+
+    const deleted = await this.roleRepository.delete(id);
+
     return this.sendResponse(res, deleted, "Role Deleted");
   }
 }
